@@ -117,6 +117,34 @@ object TLArbiter
       val initBeats = maskedBeats.reduce(_ | _) // no winner => 0 beats
       beatsLeft := Mux(latch, initBeats, beatsLeft - sink.fire())
 
+      val maxBeats = 256.U(32.W)
+
+      val latencyVal = maxBeats - initBeats
+
+      val latencyFlag = RegInit(false.B)
+
+      val latencyReg = Reg(UInt(32.W))
+
+      latencyReg := latencyVal
+
+      when(latencyReg > 0.U){
+          latencyFlag := true.B
+      }.otherwise{
+        // do nothing
+      }
+
+      when(latencyFlag){
+         when (latencyReg > 0.U){
+            latencyReg := latencyReg - 1.U
+         }.otherwise{
+             latencyFlag := false.B
+         }
+      }.otherwise{
+       // do nothing
+      }
+
+      beatsLeft := Mux(latch, initBeats, beatsLeft - sink.fire())
+
       // The one-hot source granted access in the previous cycle
       val state = RegInit(VecInit(Seq.fill(sources.size)(false.B)))
       val muxStateEarly = Mux(idle, earlyWinner, state)
